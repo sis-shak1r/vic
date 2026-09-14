@@ -1,1 +1,865 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบแข่งขันมหกรรมศิลปหัตถกรรม</title>
 
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Font: Sarabun -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Fabric.js (Canvas Editor) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col">
+
+  <!-- NAVBAR -->
+  <nav class="bg-indigo-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="showSection('public')">
+        <i class="fa-solid fa-trophy text-amber-400 text-2xl"></i>
+        <span class="font-bold text-xl tracking-wide">Arts & Crafts 2026</span>
+      </div>
+      <div id="navMenu" class="flex items-center space-x-4">
+        <button onclick="showSection('public')" class="hover:text-amber-300 transition text-sm font-medium"><i class="fa-solid fa-search mr-1"></i> ตรวจผลแข่ง/เกียรติบัตร</button>
+        <button id="loginBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-lg font-semibold text-slate-900 transition text-sm"><i class="fa-solid fa-right-to-bracket mr-1"></i> เข้าสู่ระบบ</button>
+        <div id="userProfileNav" class="hidden flex items-center space-x-3">
+          <span id="userNameNav" class="font-medium text-amber-200 text-sm"></span>
+          <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg text-sm transition"><i class="fa-solid fa-power-off"></i></button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 space-y-6">
+
+    <!-- 1. PUBLIC SECTION -->
+    <section id="publicSection" class="space-y-6">
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-2xl font-bold text-slate-800 mb-4"><i class="fa-solid fa-award text-amber-500 mr-2"></i>ค้นหาผลการแข่งขัน / ดาวน์โหลดเกียรติบัตร</h2>
+        <div class="flex flex-col md:flex-row gap-3">
+          <input type="text" id="searchKeyword" placeholder="พิมพ์ชื่อนักเรียน, เลขบัตรประชาชน หรือชื่อรายการแข่งขัน..." class="flex-grow border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <button onclick="searchPublicResults()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold transition"><i class="fa-solid fa-magnifying-glass mr-2"></i>ค้นหา</button>
+        </div>
+      </div>
+
+      <div id="searchResults" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- 2. DASHBOARD & PANELS -->
+    <section id="adminSection" class="hidden space-y-6">
+      <!-- DASHBOARD SUMMARY CARDS -->
+      <div id="dashboardSummaryContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+      <!-- TAB MENU -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="flex border-b border-slate-200 bg-slate-50 px-4 pt-2 overflow-x-auto" id="dashboardTabs"></div>
+        <div class="p-6 min-h-[500px]" id="tabContent"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- CANVAS MODAL FOR CERTIFICATE & POSTER -->
+  <div id="canvasModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-4 max-h-[95vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="text-xl font-bold text-slate-800" id="canvasModalTitle">ออกแบบเกียรติบัตร / รูปประชาสัมพันธ์</h3>
+        <button onclick="closeCanvasModal()" class="text-slate-400 hover:text-slate-600 text-2xl"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="flex flex-wrap gap-2 bg-slate-100 p-3 rounded-xl border border-slate-200" id="canvasTools">
+        <button onclick="addCanvasText()" class="bg-white px-3 py-1.5 rounded-lg border shadow-sm hover:bg-slate-50 text-sm"><i class="fa-solid fa-font text-indigo-600 mr-1"></i>เพิ่มข้อความ</button>
+        <label class="bg-white px-3 py-1.5 rounded-lg border shadow-sm hover:bg-slate-50 text-sm cursor-pointer">
+          <i class="fa-solid fa-image text-emerald-600 mr-1"></i>อัปโหลดลายเซ็น/ตรา (PNG)
+          <input type="file" id="sigUploader" accept="image/png" class="hidden" onchange="uploadSignature(event)">
+        </label>
+        <button onclick="clearCanvas()" class="bg-white px-3 py-1.5 rounded-lg border shadow-sm hover:bg-red-50 text-red-600 text-sm"><i class="fa-solid fa-trash mr-1"></i>ล้างกระดาน</button>
+      </div>
+
+      <div class="flex justify-center border bg-slate-200 rounded-xl p-2 overflow-auto">
+        <canvas id="fabricCanvas" width="842" height="595" class="shadow-lg bg-white rounded"></canvas>
+      </div>
+
+      <div class="flex justify-end space-x-3 border-t pt-4">
+        <button onclick="closeCanvasModal()" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50">ยกเลิก</button>
+        <button id="saveCanvasBtn" onclick="saveCanvasDesign()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">บันทึกเทมเพลต</button>
+        <button id="exportImageBtn" onclick="exportCanvasImage()" class="hidden px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"><i class="fa-solid fa-download mr-1"></i>ดาวน์โหลดรูป (PNG)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxYFZmPlY-kzI6P4oZyfRd7gRMVjUPhCCKX9s1slkPrbZSiqoL0Pdp6ZOEFU_a_Uccn/exec"; 
+
+    let currentUser = null;
+    let authToken = localStorage.getItem("auth_token") || null;
+    let fabricCanvasObj = null;
+
+    window.onload = () => {
+      initCanvas();
+      if (authToken) {
+        currentUser = JSON.parse(localStorage.getItem("user_info") || "null");
+        if (currentUser) setupUserDashboard();
+      }
+      searchPublicResults();
+    };
+
+    async function apiCall(action, payload = {}) {
+      Swal.showLoading();
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action, payload, token: authToken })
+        });
+        const result = await response.json();
+        Swal.close();
+        if (result.status === "error") {
+          Swal.fire("ข้อผิดพลาด", result.message, "error");
+          return null;
+        }
+        return result;
+      } catch (err) {
+        Swal.close();
+        Swal.fire("เชื่อมต่อล้มเหลว", "ไม่สามารถติดต่อกับเซิร์ฟเวอร์ได้", "error");
+        return null;
+      }
+    }
+
+    async function openLoginModal() {
+      const { value: formValues } = await Swal.fire({
+        title: 'เข้าสู่ระบบ',
+        html:
+          '<input id="swal-input1" class="swal2-input" placeholder="ชื่อผู้ใช้ (Username)">' +
+          '<input id="swal-input2" type="password" class="swal2-input" placeholder="รหัสผ่าน (Password)">',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'เข้าสู่ระบบ',
+        preConfirm: () => [
+          document.getElementById('swal-input1').value,
+          document.getElementById('swal-input2').value
+        ]
+      });
+
+      if (formValues) {
+        const [username, password] = formValues;
+        const res = await apiCall("login", { username, password });
+        if (res && res.status === "success") {
+          authToken = res.token;
+          currentUser = res.user;
+          localStorage.setItem("auth_token", authToken);
+          localStorage.setItem("user_info", JSON.stringify(currentUser));
+          Swal.fire("สำเร็จ", "เข้าสู่ระบบเรียบร้อย", "success");
+          setupUserDashboard();
+        }
+      }
+    }
+
+    function logout() {
+      authToken = null;
+      currentUser = null;
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user_info");
+      document.getElementById("userProfileNav").classList.add("hidden");
+      document.getElementById("loginBtn").classList.remove("hidden");
+      document.getElementById("adminSection").classList.add("hidden");
+      showSection('public');
+      Swal.fire("ออกจากระบบ", "ลงชื่อออกจากระบบเรียบร้อยแล้ว", "info");
+    }
+
+    async function setupUserDashboard() {
+      document.getElementById("loginBtn").classList.add("hidden");
+      document.getElementById("userProfileNav").classList.remove("hidden");
+      document.getElementById("userNameNav").innerText = `${currentUser.name} (${currentUser.role})`;
+      document.getElementById("adminSection").classList.remove("hidden");
+      
+      await loadDashboardSummary();
+      renderTabs();
+      showSection('admin');
+    }
+
+    function showSection(type) {
+      if (type === 'public') {
+        document.getElementById("publicSection").classList.remove("hidden");
+        document.getElementById("adminSection").classList.add("hidden");
+      } else {
+        document.getElementById("publicSection").classList.add("hidden");
+        document.getElementById("adminSection").classList.remove("hidden");
+      }
+    }
+
+    async function loadDashboardSummary() {
+      const res = await apiCall("getDashboardSummary");
+      const container = document.getElementById("dashboardSummaryContainer");
+      container.innerHTML = "";
+
+      if (!res || !res.data) return;
+
+      const d = res.data;
+      let cards = [];
+
+      if (currentUser.role === "super_admin") {
+        cards = [
+          { title: "ผู้ดูแลระบบทั้งหมด", val: d.total_admins, unit: "คน", icon: "fa-user-shield", color: "from-blue-500 to-indigo-600" },
+          { title: "รายการแข่งขันทั้งหมด", val: d.total_competitions, unit: "รายการ", icon: "fa-trophy", color: "from-amber-500 to-orange-600" },
+          { title: "สลิปรอตรวจสอบ", val: d.pending_payments, unit: "รายการ", icon: "fa-clock", color: "from-rose-500 to-red-600" },
+          { title: "รายได้อนุมัติแล้ว", val: d.total_revenue.toLocaleString(), unit: "บาท", icon: "fa-sack-dollar", color: "from-emerald-500 to-teal-600" }
+        ];
+      } else if (currentUser.role === "competition_admin") {
+        cards = [
+          { title: "รายการแข่งขันที่ดูแล", val: d.total_competitions, unit: "รายการ", icon: "fa-trophy", color: "from-amber-500 to-orange-600" },
+          { title: "เกียรติบัตรที่อนุมัติแล้ว", val: d.approved_certs, unit: "แบบ", icon: "fa-certificate", color: "from-emerald-500 to-teal-600" },
+          { title: "สลิปรอตรวจสอบ", val: d.pending_payments, unit: "รายการ", icon: "fa-file-invoice-dollar", color: "from-rose-500 to-red-600" }
+        ];
+      } else if (currentUser.role === "school_admin") {
+        cards = [
+          { title: "นักเรียนในสังกัด", val: d.total_students, unit: "คน", icon: "fa-user-graduate", color: "from-blue-500 to-indigo-600" },
+          { title: "ลงทะเบียนแข่งแล้ว", val: d.total_registrations, unit: "รายการ", icon: "fa-pen-to-square", color: "from-amber-500 to-orange-600" },
+          { title: "ชำระเงินอนุมัติแล้ว", val: d.approved_payments, unit: "รายการ", icon: "fa-circle-check", color: "from-emerald-500 to-teal-600" },
+          { title: "รอชำระ/รอตรวจสลิป", val: d.pending_payments, unit: "รายการ", icon: "fa-hourglass-half", color: "from-rose-500 to-red-600" }
+        ];
+      }
+
+      cards.forEach(c => {
+        const cardHtml = `
+          <div class="bg-gradient-to-br ${c.color} rounded-2xl p-4 text-white shadow-md flex items-center justify-between">
+            <div>
+              <p class="text-xs opacity-80 font-medium">${c.title}</p>
+              <h3 class="text-2xl font-bold mt-1">${c.val} <span class="text-xs font-normal opacity-90">${c.unit}</span></h3>
+            </div>
+            <div class="bg-white/20 p-3 rounded-xl text-xl backdrop-blur-sm">
+              <i class="fa-solid ${c.icon}"></i>
+            </div>
+          </div>
+        `;
+        container.innerHTML += cardHtml;
+      });
+    }
+
+    function renderTabs() {
+      const tabsContainer = document.getElementById("dashboardTabs");
+      tabsContainer.innerHTML = "";
+
+      let tabs = [];
+      if (currentUser.role === "super_admin") {
+        tabs = [
+          { id: "manageAdmins", label: "จัดการแอดมิน", icon: "fa-user-shield", fn: loadAdminManagement },
+          { id: "manageComps", label: "รายการแข่งขันทั้งหมด", icon: "fa-list-check", fn: loadCompetitionManagement },
+          { id: "verifyPayments", label: "ตรวจสอบการชำระเงิน", icon: "fa-file-invoice-dollar", fn: loadPaymentManagement }
+        ];
+      } else if (currentUser.role === "competition_admin") {
+        tabs = [
+          { id: "manageComps", label: "จัดการการแข่งขัน/เกียรติบัตร", icon: "fa-trophy", fn: loadCompetitionManagement },
+          { id: "verifyPayments", label: "ตรวจสอบการชำระเงิน", icon: "fa-file-invoice-dollar", fn: loadPaymentManagement }
+        ];
+      } else if (currentUser.role === "school_admin") {
+        tabs = [
+          { id: "manageStudents", label: "จัดการข้อมูลนักเรียน", icon: "fa-user-graduate", fn: loadStudentManagement },
+          { id: "applyComp", label: "สมัครแข่งขัน", icon: "fa-pen-to-square", fn: loadRegistrationManagement },
+          { id: "promoPoster", label: "สร้างรูปประชาสัมพันธ์", icon: "fa-bullhorn", fn: loadPromoPosterManagement }
+        ];
+      }
+
+      tabs.forEach((t, idx) => {
+        const btn = document.createElement("button");
+        btn.className = `px-5 py-3 font-semibold text-slate-600 hover:text-indigo-600 border-b-2 border-transparent transition flex items-center space-x-2 whitespace-nowrap ${idx === 0 ? 'border-indigo-600 text-indigo-600' : ''}`;
+        btn.innerHTML = `<i class="fa-solid ${t.icon}"></i><span>${t.label}</span>`;
+        btn.onclick = () => {
+          document.querySelectorAll("#dashboardTabs button").forEach(b => {
+            b.classList.remove("border-indigo-600", "text-indigo-600");
+            b.classList.add("border-transparent", "text-slate-600");
+          });
+          btn.classList.remove("border-transparent", "text-slate-600");
+          btn.classList.add("border-indigo-600", "text-indigo-600");
+          t.fn();
+        };
+        tabsContainer.appendChild(btn);
+      });
+
+      if (tabs.length > 0) tabs[0].fn();
+    }
+
+    // EXPORT TO EXCEL FUNCTION
+    function exportTableToExcel(tableID, filename = '') {
+      const table = document.getElementById(tableID);
+      if (!table) return;
+
+      let downloadLink;
+      const dataType = 'application/vnd.ms-excel';
+      const tableHTML = table.outerHTML.replace(/ /g, '%20');
+
+      filename = filename ? filename + '.xls' : 'export_data.xls';
+      downloadLink = document.createElement("a");
+      document.body.appendChild(downloadLink);
+
+      if (navigator.msSaveOrOpenBlob) {
+        const blob = new Blob(['\ufeff' + table.outerHTML], { type: dataType });
+        navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        downloadLink.href = 'data:' + dataType + ', ' + '%feff' + tableHTML;
+        downloadLink.download = filename;
+        downloadLink.click();
+      }
+    }
+
+    async function searchPublicResults() {
+      const keyword = document.getElementById("searchKeyword").value;
+      const res = await apiCall("getPublicResults", { keyword });
+      const container = document.getElementById("searchResults");
+      container.innerHTML = "";
+
+      if (!res || !res.data || res.data.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500">ไม่พบข้อมูลผลการแข่งขัน</div>`;
+        return;
+      }
+
+      res.data.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4";
+
+        let studentCertButtonsHtml = "";
+        
+        if (item.cert_approved === "true") {
+          studentCertButtonsHtml = item.students.map(s => `
+            <button onclick='generateIndividualCert(${JSON.stringify(item)}, "${s.name}")' class="w-full text-left bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs px-3 py-2 rounded-lg transition font-medium flex justify-between items-center my-1">
+              <span><i class="fa-solid fa-user-graduate mr-1.5 text-emerald-600"></i>${s.name}</span>
+              <span class="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded"><i class="fa-solid fa-file-pdf mr-1"></i>โหลดเกียรติบัตร</span>
+            </button>
+          `).join('');
+        } else {
+          studentCertButtonsHtml = `<span class="text-xs text-slate-400 italic block mt-2">เกียรติบัตรอยู่ระหว่างรอการอนุมัติ</span>`;
+        }
+
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start">
+              <span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold mb-2 inline-block"><i class="fa-solid fa-medal mr-1"></i>${item.medal || 'รอผลการแข่ง'}</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">${item.team_type === 'single' ? 'แข่งเดี่ยว' : (item.team_type === 'pair' ? 'แข่งคู่' : 'แข่งทีม')}</span>
+            </div>
+            <h4 class="font-bold text-lg text-slate-800">${item.competition_name}</h4>
+            <p class="text-slate-500 text-xs mt-1"><strong>ครูผู้คุม:</strong> ${item.teacher_name}</p>
+            <p class="text-xs text-slate-400 mt-0.5"><strong>คะแนน:</strong> ${item.score || '-'}</p>
+            
+            <div class="mt-3 border-t pt-2">
+              <span class="text-xs font-bold text-slate-700 block mb-1">รายชื่อผู้ได้รับเกียรติบัตร (แยกรายคน):</span>
+              ${studentCertButtonsHtml}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function initCanvas() {
+      fabricCanvasObj = new fabric.Canvas('fabricCanvas');
+    }
+
+    function openCanvasDesigner(compId, currentBg, currentJson) {
+      document.getElementById("canvasModal").classList.remove("hidden");
+      document.getElementById("saveCanvasBtn").classList.remove("hidden");
+      document.getElementById("exportImageBtn").classList.add("hidden");
+      document.getElementById("saveCanvasBtn").onclick = () => saveCertTemplate(compId);
+
+      fabricCanvasObj.clear();
+      
+      if (currentBg) {
+        fabric.Image.fromURL(currentBg, (img) => {
+          fabricCanvasObj.setBackgroundImage(img, fabricCanvasObj.renderAll.bind(fabricCanvasObj), {
+            scaleX: fabricCanvasObj.width / img.width,
+            scaleY: fabricCanvasObj.height / img.height
+          });
+        });
+      }
+
+      if (currentJson && currentJson !== "{}") {
+        fabricCanvasObj.loadFromJSON(JSON.parse(currentJson), fabricCanvasObj.renderAll.bind(fabricCanvasObj));
+      } else {
+        const nameText = new fabric.Text("{student_name}", { left: 300, top: 250, fontSize: 28, fontFamily: "Sarabun", fill: "#000000" });
+        const compText = new fabric.Text("{competition_name}", { left: 250, top: 320, fontSize: 20, fontFamily: "Sarabun", fill: "#333333" });
+        fabricCanvasObj.add(nameText, compText);
+      }
+    }
+
+    function addCanvasText() {
+      const text = new fabric.Text("ข้อความใหม่", { left: 100, top: 100, fontSize: 20, fontFamily: "Sarabun" });
+      fabricCanvasObj.add(text);
+    }
+
+    function uploadSignature(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (f) {
+        fabric.Image.fromURL(f.target.result, (img) => {
+          img.scaleToWidth(120);
+          img.set({ left: 350, top: 400 });
+          fabricCanvasObj.add(img);
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearCanvas() { fabricCanvasObj.clear(); }
+    function closeCanvasModal() { document.getElementById("canvasModal").classList.add("hidden"); }
+
+    async function saveCertTemplate(compId) {
+      const jsonDesign = fabricCanvasObj.toJSON();
+      const res = await apiCall("saveCertificateTemplate", { competition_id: compId, template_json: jsonDesign, bg_url: "" });
+      if (res) {
+        Swal.fire("สำเร็จ", "บันทึกเทมเพลตเกียรติบัตรเรียบร้อย", "success");
+        closeCanvasModal();
+        loadCompetitionManagement();
+      }
+    }
+
+    function generateIndividualCert(item, singleStudentName) {
+      document.getElementById("canvasModal").classList.remove("hidden");
+      document.getElementById("saveCanvasBtn").classList.add("hidden");
+      document.getElementById("exportImageBtn").classList.remove("hidden");
+
+      fabricCanvasObj.clear();
+      const templateJson = JSON.parse(item.cert_template_json || "{}");
+      
+      fabricCanvasObj.loadFromJSON(templateJson, () => {
+        fabricCanvasObj.getObjects().forEach(obj => {
+          if (obj.type === "text" || obj.type === "i-text") {
+            let str = obj.text;
+            str = str.replace("{student_name}", singleStudentName);
+            str = str.replace("{competition_name}", item.competition_name);
+            str = str.replace("{award_level}", item.medal || "เข้าร่วม");
+            str = str.replace("{team_members}", item.team_members_text || "");
+            obj.set("text", str);
+          }
+        });
+        fabricCanvasObj.renderAll();
+      });
+    }
+
+    function exportCanvasImage() {
+      const dataURL = fabricCanvasObj.toDataURL({ format: 'png', quality: 1.0 });
+      const link = document.createElement('a');
+      link.download = 'certificate.png';
+      link.href = dataURL;
+      link.click();
+    }
+
+    async function loadAdminManagement() {
+      const container = document.getElementById("tabContent");
+      const res = await apiCall("getAdmins");
+      if (!res) return;
+
+      container.innerHTML = `
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <h3 class="text-xl font-bold text-slate-800">จัดการข้อมูลผู้ดูแลระบบ</h3>
+          <div class="flex space-x-2">
+            <button onclick="exportTableToExcel('adminDataTable', 'admin_list')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-file-excel mr-1"></i>ส่งออก Excel</button>
+            <button onclick="openAdminForm()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-plus mr-1"></i>เพิ่มแอดมิน</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table id="adminDataTable" class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b bg-slate-50 text-slate-600 text-sm">
+                <th class="p-3">ID</th><th class="p-3">Username</th><th class="p-3">ชื่อ-สกุล</th><th class="p-3">สิทธิ์</th><th class="p-3">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y text-sm">
+              ${res.data.map(u => `
+                <tr>
+                  <td class="p-3 font-mono">${u.id}</td>
+                  <td class="p-3 font-semibold">${u.username}</td>
+                  <td class="p-3">${u.name}</td>
+                  <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-1 rounded-md font-bold">${u.role}</span></td>
+                  <td class="p-3"><span class="text-emerald-600 font-bold">${u.status}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    async function openAdminForm() {
+      const { value: formValues } = await Swal.fire({
+        title: 'เพิ่มแอดมินใหม่',
+        html:
+          '<input id="swal-u" class="swal2-input" placeholder="Username">' +
+          '<input id="swal-p" type="password" class="swal2-input" placeholder="Password">' +
+          '<input id="swal-n" class="swal2-input" placeholder="ชื่อ-นามสกุล">' +
+          '<select id="swal-r" class="swal2-input">' +
+            '<option value="competition_admin">แอดมินฝ่ายจัดแข่งขัน</option>' +
+            '<option value="school_admin">แอดมินโรงเรียน</option>' +
+          '</select>' +
+          '<input id="swal-s" class="swal2-input" placeholder="รหัสโรงเรียน (กรณีเป็นแอดมินโรงเรียน)">',
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => ({
+          username: document.getElementById('swal-u').value,
+          password: document.getElementById('swal-p').value,
+          name: document.getElementById('swal-n').value,
+          role: document.getElementById('swal-r').value,
+          school_id: document.getElementById('swal-s').value
+        })
+      });
+
+      if (formValues) {
+        const res = await apiCall("saveAdmin", formValues);
+        if (res) {
+          Swal.fire("สำเร็จ", "เพิ่มข้อมูลแอดมินเรียบร้อย", "success");
+          loadAdminManagement();
+        }
+      }
+    }
+
+    async function loadCompetitionManagement() {
+      const container = document.getElementById("tabContent");
+      const res = await apiCall("getCompetitions");
+      if (!res) return;
+
+      container.innerHTML = `
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <h3 class="text-xl font-bold text-slate-800">จัดการรายการแข่งขัน / ออกแบบเกียรติบัตร</h3>
+          <div class="flex space-x-2">
+            <button onclick="exportTableToExcel('compDataTable', 'competitions_list')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-file-excel mr-1"></i>ส่งออก Excel</button>
+            <button onclick="openCompForm()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-plus mr-1"></i>เพิ่มรายการแข่ง</button>
+          </div>
+        </div>
+
+        <div class="hidden">
+          <table id="compDataTable">
+            <thead>
+              <tr><th>ID</th><th>ชื่อรายการ</th><th>หมวดหมู่</th><th>ระดับชั้น</th><th>ประเภท</th><th>คนสูงสุด/ทีม</th><th>ค่าสมัคร</th></tr>
+            </thead>
+            <tbody>
+              ${res.data.map(c => `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.category}</td><td>${c.level}</td><td>${c.team_type}</td><td>${c.max_per_team}</td><td>${c.fee}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          ${res.data.map(c => `
+            <div class="border rounded-2xl p-4 bg-slate-50 flex flex-col justify-between space-y-3">
+              <div>
+                <div class="flex justify-between items-start">
+                  <span class="text-xs bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full font-bold">${c.level}</span>
+                  <span class="text-xs font-bold text-amber-600">
+                    ${c.team_type === 'single' ? 'เดี่ยว (1 คน)' : (c.team_type === 'pair' ? 'คู่ (2 คน)' : `ทีม (ไม่เกิน ${c.max_per_team} คน)`)}
+                  </span>
+                </div>
+                <h4 class="font-bold text-slate-800 text-lg mt-2">${c.name}</h4>
+                <p class="text-xs text-slate-500">หมวดหมู่: ${c.category} | ค่าสมัคร: ${c.fee > 0 ? c.fee + ' บาท' : 'ฟรี'}</p>
+              </div>
+              <div class="flex flex-wrap gap-2 pt-2 border-t">
+                <button onclick="openCanvasDesigner('${c.id}', '${c.cert_bg_url}', '${c.cert_template_json.replace(/'/g, "\\'")}')" class="bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs px-3 py-1.5 rounded-lg font-semibold transition"><i class="fa-solid fa-pen-ruler mr-1"></i>ออกแบบเกียรติบัตร</button>
+                ${c.cert_approved === "true" 
+                  ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1.5 rounded-lg font-bold"><i class="fa-solid fa-circle-check mr-1"></i>อนุมัติแล้ว</span>`
+                  : `<button onclick="approveCert('${c.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition"><i class="fa-solid fa-check mr-1"></i>กดอนุมัติเกียรติบัตร</button>`
+                }
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function openCompForm() {
+      const { value: formValues } = await Swal.fire({
+        title: 'เพิ่มรายการแข่งขันใหม่',
+        html:
+          '<input id="swal-cn" class="swal2-input" placeholder="ชื่อรายการแข่งขัน">' +
+          '<input id="swal-cc" class="swal2-input" placeholder="หมวดหมู่สาระ">' +
+          '<input id="swal-cl" class="swal2-input" placeholder="ระดับชั้น (เช่น ม.1-ม.3)">' +
+          '<select id="swal-ct" class="swal2-input" onchange="toggleMaxTeamInput(this.value)">' +
+            '<option value="single">ประเภทเดี่ยว (1 คน)</option>' +
+            '<option value="pair">ประเภทคู่ (2 คน)</option>' +
+            '<option value="team">ประเภททีม</option>' +
+          '</select>' +
+          '<input id="swal-cm" type="number" class="swal2-input hidden" placeholder="จำนวนคนสูงสุดต่อทีม">' +
+          '<input id="swal-cf" type="number" class="swal2-input" placeholder="ค่าลงทะเบียน (0 หากแข่งฟรี)">',
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => {
+          const teamType = document.getElementById('swal-ct').value;
+          let maxPerTeam = 1;
+          if (teamType === "pair") maxPerTeam = 2;
+          if (teamType === "team") maxPerTeam = document.getElementById('swal-cm').value || 3;
+
+          return {
+            name: document.getElementById('swal-cn').value,
+            category: document.getElementById('swal-cc').value,
+            level: document.getElementById('swal-cl').value,
+            team_type: teamType,
+            max_per_team: maxPerTeam,
+            fee: document.getElementById('swal-cf').value || 0
+          }
+        }
+      });
+
+      if (formValues) {
+        const res = await apiCall("saveCompetition", formValues);
+        if (res) {
+          Swal.fire("สำเร็จ", "เพิ่มรายการแข่งขันเรียบร้อย", "success");
+          loadCompetitionManagement();
+        }
+      }
+    }
+
+    function toggleMaxTeamInput(val) {
+      const input = document.getElementById('swal-cm');
+      if (val === 'team') input.classList.remove('hidden');
+      else input.classList.add('hidden');
+    }
+
+    async function approveCert(compId) {
+      const res = await apiCall("approveCertificate", { competition_id: compId });
+      if (res) {
+        Swal.fire("อนุมัติเรียบร้อย", "เกียรติบัตรรายการนี้เปิดให้ดาวน์โหลดได้แล้ว", "success");
+        loadCompetitionManagement();
+      }
+    }
+
+    async function loadPaymentManagement() {
+      const container = document.getElementById("tabContent");
+      const res = await apiCall("getPayments");
+      if (!res) return;
+
+      container.innerHTML = `
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <h3 class="text-xl font-bold text-slate-800">ตรวจสอบและอนุมัติการชำระเงิน</h3>
+          <button onclick="exportTableToExcel('paymentDataTable', 'payment_report')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-file-excel mr-1"></i>ส่งออก Excel</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table id="paymentDataTable" class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b bg-slate-50 text-slate-600 text-sm">
+                <th class="p-3">รหัสลงทะเบียน</th><th class="p-3">รายการแข่ง</th><th class="p-3">โรงเรียน ID</th><th class="p-3">ค่าสมัคร</th><th class="p-3">หลักฐาน (Slip)</th><th class="p-3">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y text-sm">
+              ${res.data.map(p => `
+                <tr>
+                  <td class="p-3 font-mono">${p.registration_id}</td>
+                  <td class="p-3 font-semibold">${p.competition_name}</td>
+                  <td class="p-3">${p.school_id}</td>
+                  <td class="p-3 font-bold text-emerald-600">${p.fee} บาท</td>
+                  <td class="p-3">${p.slip_url ? `<a href="${p.slip_url}" target="_blank" class="text-indigo-600 underline">ดูสลิป</a>` : '-'}</td>
+                  <td class="p-3 space-x-1">
+                    ${p.payment_status === 'approved' 
+                      ? `<span class="text-emerald-600 font-bold">อนุมัติแล้ว</span>`
+                      : `<button onclick="verifyPay('${p.registration_id}', 'approved')" class="bg-emerald-600 text-white text-xs px-2.5 py-1 rounded-md">อนุมัติ</button>
+                         <button onclick="verifyPay('${p.registration_id}', 'rejected')" class="bg-red-600 text-white text-xs px-2.5 py-1 rounded-md">ปฏิเสธ</button>`
+                    }
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    async function verifyPay(regId, status) {
+      const res = await apiCall("verifyPayment", { registration_id: regId, status });
+      if (res) {
+        Swal.fire("สำเร็จ", "อัปเดตสถานะการชำระเงินเรียบร้อย", "success");
+        loadPaymentManagement();
+      }
+    }
+
+    async function loadStudentManagement() {
+      const container = document.getElementById("tabContent");
+      const res = await apiCall("getStudents");
+      if (!res) return;
+
+      container.innerHTML = `
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <h3 class="text-xl font-bold text-slate-800">จัดการข้อมูลนักเรียน (โรงเรียน: ${currentUser.school_id})</h3>
+          <div class="flex space-x-2">
+            <button onclick="exportTableToExcel('studentDataTable', 'student_list')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-file-excel mr-1"></i>ส่งออก Excel</button>
+            <button onclick="openStudentForm()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-plus mr-1"></i>เพิ่มนักเรียน</button>
+          </div>
+        </div>
+
+        <div class="hidden">
+          <table id="studentDataTable">
+            <thead>
+              <tr><th>ID</th><th>เลขบัตรประชาชน</th><th>คำนำหน้า</th><th>ชื่อ-สกุล</th><th>ระดับชั้น</th></tr>
+            </thead>
+            <tbody>
+              ${res.data.map(s => `<tr><td>${s.id}</td><td>${s.id_card}</td><td>${s.prefix}</td><td>${s.fullname}</td><td>${s.grade}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          ${res.data.map(s => `
+            <div class="border rounded-xl p-3 bg-slate-50 flex items-center space-x-3">
+              <img src="${s.avatar_url || 'https://via.placeholder.com/150'}" class="w-12 h-12 rounded-full object-cover border">
+              <div>
+                <h5 class="font-bold text-slate-800">${s.prefix}${s.fullname}</h5>
+                <p class="text-xs text-slate-500">ชั้น: ${s.grade} | เลขบัตร: ${s.id_card}</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function openStudentForm() {
+      const { value: formValues } = await Swal.fire({
+        title: 'เพิ่มนักเรียนใหม่',
+        html:
+          '<input id="swal-sid" class="swal2-input" placeholder="เลขประจำตัวประชาชน (13 หลัก)">' +
+          '<input id="swal-sp" class="swal2-input" placeholder="คำนำหน้า (เด็กชาย/นาย/นางสาว)">' +
+          '<input id="swal-sf" class="swal2-input" placeholder="ชื่อ-นามสกุล">' +
+          '<input id="swal-sg" class="swal2-input" placeholder="ระดับชั้น (เช่น ม.2)">' +
+          '<input id="swal-sa" class="swal2-input" placeholder="URL รูปโปรไฟล์นักเรียน">',
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => ({
+          id_card: document.getElementById('swal-sid').value,
+          prefix: document.getElementById('swal-sp').value,
+          fullname: document.getElementById('swal-sf').value,
+          grade: document.getElementById('swal-sg').value,
+          avatar_url: document.getElementById('swal-sa').value
+        })
+      });
+
+      if (formValues) {
+        const res = await apiCall("saveStudent", formValues);
+        if (res) {
+          Swal.fire("สำเร็จ", "บันทึกข้อมูลนักเรียนเรียบร้อย", "success");
+          loadStudentManagement();
+        }
+      }
+    }
+
+    async function loadRegistrationManagement() {
+      const container = document.getElementById("tabContent");
+      const compRes = await apiCall("getCompetitions");
+      const stdRes = await apiCall("getStudents");
+      if (!compRes || !stdRes) return;
+
+      container.innerHTML = `
+        <h3 class="text-xl font-bold text-slate-800 mb-4">สมัครแข่งขันรายการที่เปิดรับ</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          ${compRes.data.map(c => `
+            <div class="border rounded-2xl p-4 bg-slate-50 space-y-3">
+              <div class="flex justify-between">
+                <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold">${c.level}</span>
+                <span class="text-xs font-bold text-amber-600">
+                  ${c.team_type === 'single' ? 'แข่งเดี่ยว (1 คน)' : (c.team_type === 'pair' ? 'แข่งคู่ (2 คน)' : `แข่งทีม (ไม่เกิน ${c.max_per_team} คน)`)}
+                </span>
+              </div>
+              <h4 class="font-bold text-slate-800">${c.name}</h4>
+              <button onclick="applyCompModal('${c.id}', '${c.team_type}', ${c.max_per_team}, ${JSON.stringify(stdRes.data).replace(/'/g, "\\'")})" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 rounded-xl transition font-semibold"><i class="fa-solid fa-paper-plane mr-1"></i>สมัครเข้าแข่งขันรายการนี้</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function applyCompModal(compId, teamType, maxTeam, students) {
+      let optionsHtml = students.map(s => `<option value="${s.id}">${s.prefix}${s.fullname} (${s.grade})</option>`).join('');
+      let typeLabel = teamType === 'single' ? 'เลือกนักเรียน 1 คน' : (teamType === 'pair' ? 'เลือกนักเรียน 2 คน' : `เลือกนักเรียนไม่เกิน ${maxTeam} คน`);
+
+      const { value: formValues } = await Swal.fire({
+        title: 'เลือกลงแข่งขัน',
+        html:
+          `<label class="block text-left text-xs mb-1 font-bold text-indigo-600">${typeLabel} (กด Ctrl ค้างเพื่อเลือกหลายคน):</label>` +
+          `<select id="swal-stds" class="swal2-input h-32" multiple>${optionsHtml}</select>` +
+          `<input id="swal-tc" class="swal2-input" placeholder="ชื่อ-สกุล ครูผู้คุม/ผู้ฝึกสอน">`,
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => {
+          const select = document.getElementById('swal-stds');
+          const selectedStds = Array.from(select.selectedOptions).map(opt => opt.value);
+          return {
+            competition_id: compId,
+            student_ids: selectedStds,
+            teacher_name: document.getElementById('swal-tc').value
+          }
+        }
+      });
+
+      if (formValues) {
+        if (teamType === 'single' && formValues.student_ids.length !== 1) {
+          Swal.fire("ข้อผิดพลาด", "การแข่งเดี่ยวต้องเลือกนักเรียน 1 คนเท่านั้น", "error");
+          return;
+        }
+        if (teamType === 'pair' && formValues.student_ids.length !== 2) {
+          Swal.fire("ข้อผิดพลาด", "การแข่งคู่ต้องเลือกนักเรียน 2 คนเท่านั้น", "error");
+          return;
+        }
+        if (teamType === 'team' && (formValues.student_ids.length === 0 || formValues.student_ids.length > maxTeam)) {
+          Swal.fire("ข้อผิดพลาด", `การแข่งทีมต้องเลือกนักเรียน 1 - ${maxTeam} คน`, "error");
+          return;
+        }
+
+        const res = await apiCall("registerCompetition", formValues);
+        if (res) {
+          Swal.fire("สมัครสำเร็จ", "ลงทะเบียนเรียบร้อยแล้ว", "success");
+        }
+      }
+    }
+
+    async function loadPromoPosterManagement() {
+      const container = document.getElementById("tabContent");
+      const stdRes = await apiCall("getStudents");
+      if (!stdRes) return;
+
+      container.innerHTML = `
+        <h3 class="text-xl font-bold text-slate-800 mb-2">สร้างภาพประชาสัมพันธ์ส่งกำลังใจเชียร์</h3>
+        <p class="text-slate-500 text-sm mb-4">เลือกลูกศิษย์เพื่อเจนเป็นภาพกราฟิกสวยงาม โพสต์ลง Facebook/Line ได้ทันที</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          ${stdRes.data.map(s => `
+            <div class="border rounded-2xl p-4 bg-slate-50 flex flex-col justify-between items-center text-center space-y-3">
+              <img src="${s.avatar_url || 'https://via.placeholder.com/150'}" class="w-20 h-20 rounded-full object-cover border-2 border-indigo-500">
+              <div>
+                <h4 class="font-bold text-slate-800">${s.prefix}${s.fullname}</h4>
+                <p class="text-xs text-slate-500">${s.grade}</p>
+              </div>
+              <button onclick="generatePromoPoster('${s.prefix}${s.fullname}', '${s.avatar_url}')" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-sm font-semibold py-2 rounded-xl transition"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>สร้างรูปประชาสัมพันธ์</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function generatePromoPoster(studentName, avatarUrl) {
+      document.getElementById("canvasModal").classList.remove("hidden");
+      document.getElementById("saveCanvasBtn").classList.add("hidden");
+      document.getElementById("exportImageBtn").classList.remove("hidden");
+
+      fabricCanvasObj.clear();
+      fabricCanvasObj.setBackgroundColor("#1e1b4b", fabricCanvasObj.renderAll.bind(fabricCanvasObj));
+
+      const title = new fabric.Text("ขอเชิญร่วมส่งกำลังใจเชียร์", { left: 260, top: 50, fontSize: 32, fill: "#f59e0b", fontFamily: "Sarabun", fontWeight: "bold" });
+      const subtitle = new fabric.Text("การแข่งขันศิลปหัตถกรรมนักเรียน 2026", { left: 240, top: 100, fontSize: 20, fill: "#ffffff", fontFamily: "Sarabun" });
+      const name = new fabric.Text(studentName, { left: 320, top: 400, fontSize: 28, fill: "#ffffff", fontFamily: "Sarabun", fontWeight: "bold" });
+
+      fabricCanvasObj.add(title, subtitle, name);
+
+      if (avatarUrl) {
+        fabric.Image.fromURL(avatarUrl, (img) => {
+          img.scaleToWidth(200);
+          img.set({ left: 320, top: 160 });
+          fabricCanvasObj.add(img);
+          fabricCanvasObj.renderAll();
+        });
+      }
+    }
+  </script>
+</body>
+</html>
